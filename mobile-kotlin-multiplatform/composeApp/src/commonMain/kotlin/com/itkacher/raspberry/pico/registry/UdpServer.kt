@@ -36,7 +36,7 @@ object UdpServer {
         }
     }
 
-    private suspend fun sendBroadcastDiscovery(port: Int) {
+    private suspend fun sendBroadcastDiscovery(broadcastIp: String, sendToPort: Int) {
         val currentTime = Clock.System.now()
         val timeElapsed = lastBroadcastTime?.let { currentTime - it } ?: Duration.INFINITE
 
@@ -50,24 +50,27 @@ object UdpServer {
             serverSocket?.outgoing?.send(
                 Datagram(
                     packet = ByteReadPacket(DISCOVERY_MESSAGE.toByteArray()),
-                    address = InetSocketAddress("192.168.1.255", port) // Broadcast address
+                    address = InetSocketAddress(broadcastIp, sendToPort) // Broadcast address
                 )
             )
             println("UDP Broadcast message sent.")
         } catch (e: Exception) {
+            e.printStackTrace()
             println("UDP Error sending broadcast: ${e.message}")
         }
     }
 
-    private suspend fun proceedMessageQueue() {
+    private suspend fun proceedMessageQueue(sendToPort: Int) {
         messageLock.withLock {
-            val message = messageQueue.removeFirstOrNull() ?: return
+            var message = messageQueue.removeFirstOrNull() ?: return
             serverSocket?.apply {
                 try {
+                    message = message.copy(port = sendToPort)
+                    println("UDP Trying to send ${message.toDatagram()}")
                     outgoing.send(message.toDatagram())
-                    println("UDP Message was sent: $message")
+                    println("UDP message is sent")
                 } catch (e: Exception) {
-                    println("UDP Error during  sending: ${e.message}")
+                    println("UDP Error during  sending: $e")
                 }
             }
         }
@@ -75,24 +78,31 @@ object UdpServer {
 
     private suspend fun readMessages() {
         try {
-            val datagram = withTimeout(5000) {
+            val datagram = withTimeout(500) {
                 serverSocket?.receive()
             } ?: return
             val address = datagram.address.toString()
             val message = datagram.packet.readText()
+            if (message.startsWith("{").not()) return
+            println("UDP Received message $message")
             val data = Json.decodeFromString<TemperatureData>(message)
             try {
-                temperatureData.emit(data.copy(senderIp = address.toString()))
+                // /192.168.0.232:56085 ===> 192.168.0.232
+                var ip = address.toString().split(":").first().replace("/", "")
+                temperatureData.emit(data.copy(senderIp = ip))
                 println("UDP Received message: $message from ${datagram.address}")
             } catch (e: Exception) {
                 println("UDP Error emitting temperature data: ${e.message}")
             }
-        }  catch (_: TimeoutCancellationException) {
-            println("UDP Timeout: No message received.")
+        } catch (_: TimeoutCancellationException) {
+
+        } catch (e: Exception) {
+            println("UDP readMessages error: ${e.message}")
         }
     }
 
-    fun listenUdpMessages(scope: CoroutineScope, port: Int = 65432): Flow<TemperatureData> {
+    fun listenUdpMessages(scope: CoroutineScope, broadcastIp: String, port: Int = 65432):
+            Flow<TemperatureData> {
         scope.launch(Dispatchers.IO + CoroutineName("BackgroundCoroutine")) {
             udpLock.withLock {
                 try {
@@ -100,12 +110,15 @@ object UdpServer {
                     serverSocket?.dispose()
                     val newSocket = aSocket(selectorManager)
                         .udp()
-                        .bind(InetSocketAddress("0.0.0.0", port))
+                        .bind(InetSocketAddress("0.0.0.0", port)) {
+                            broadcast = true
+                        }
+
                     serverSocket = newSocket
                     println("UDP server is listening on ${serverSocket?.localAddress}")
                     while (isActive) {
-                        proceedMessageQueue()
-                        sendBroadcastDiscovery(port)
+                        proceedMessageQueue(port)
+                        sendBroadcastDiscovery(broadcastIp, port)
                         readMessages()
                     }
                 } catch (e: Exception) {

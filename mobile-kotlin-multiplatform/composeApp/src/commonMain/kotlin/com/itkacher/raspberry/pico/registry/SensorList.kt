@@ -49,7 +49,6 @@ fun EmptyItem() {
 
 @Composable
 fun SensorItemView(sensor: TemperatureData, onOpenClicked: (TemperatureData, Boolean) -> Unit) {
-    val isOpened by remember { mutableStateOf(sensor.isOpened) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -77,11 +76,11 @@ fun SensorItemView(sensor: TemperatureData, onOpenClicked: (TemperatureData, Boo
             )
             Spacer(modifier = Modifier.width(8.dp))
             Switch(
-                checked = isOpened == true,
-                enabled = isOpened != null,
-                onCheckedChange = { onOpenClicked(sensor, isOpened?.not() == true) }
+                checked = sensor.isOpened == true,
+                enabled = sensor.isOpened != null,
+                onCheckedChange = { onOpenClicked(sensor, sensor.isOpened?.not() == true) }
             )
-            Text(text = if (isOpened == true) "OPENED" else "CLOSED")
+            Text(text = if (sensor.isOpened == true) "OPENED" else "CLOSED")
 
         }
     }

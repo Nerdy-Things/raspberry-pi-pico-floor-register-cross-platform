@@ -30,23 +30,29 @@ is_opened = True
 motor.rotate(direction=-1)
 udp.start_listening(is_blocking=False)
 
+def send_status():
+    temperature = temperature_sensor.get_temperature()
+    # The name should be unique for each PICO!
+    message_dict = {"name": "Bedroom" ,"temperature": temperature, "is_opened": is_opened}
+    message = json.dumps(message_dict)
+    udp.send(message, ip_2_broadcast(wifi.get_ip_address()), UDP_PORT)
+
 while True:
     wifi.try_reconnect_if_lost()
     message, address, _ = udp.read()
     if message is not None and address is not None:
         if DISCOVERY_MESSAGE in message:
-            temperature = temperature_sensor.get_temperature()
-            message_dict = {"name": "Bedroom" ,"temperature": temperature, "is_opened": is_opened, "sender_ip": address}
-            message = json.dumps(message_dict)
-            udp.send(message, ip_2_broadcast(address), UDP_PORT)
+            send_status()
         elif OPEN_MESSAGE in message:
             is_opened = True
             motor.rotate(direction=-1)
             last_udp_command_time = date_time.current_timestamp_seconds()
+            send_status()
         elif CLOSE_MESSAGE in message:
             is_opened = False
             motor.rotate(direction=1)
             last_udp_command_time = date_time.current_timestamp_seconds()
+            send_status()
 
     if date_time.current_timestamp_seconds() - last_udp_command_time < COOL_DOWN: 
         continue
@@ -59,8 +65,10 @@ while True:
         Logger.print("Closing during a day")
         motor.rotate(direction=-1)
         is_opened = False
+        send_status()
     # Open registry at night
     elif hour < 7 and not is_opened or  hour > 20 and not is_opened:
         Logger.print("Opening at night")
         is_opened = True
         motor.rotate(direction=1)
+        send_status()

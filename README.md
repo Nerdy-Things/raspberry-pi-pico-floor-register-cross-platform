@@ -1,4 +1,6 @@
-# Raspberry PI Pico 3D Printed Smart Floor Register
+# Raspberry PI Pico 2W 3D Printed Smart Floor Register (Floor Vents)
+
+## YouTube video explanation:
 
 [![Watch the video](/images/rpi-pico-register-blue-youtube.jpg)](https://youtu.be/JJ_Q_NG861g)
 

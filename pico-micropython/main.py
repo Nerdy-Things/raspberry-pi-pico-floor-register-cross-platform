@@ -19,12 +19,12 @@ CLOSE_MESSAGE = "Shut the Door!"
 last_udp_command_time = 0
 
 wifi = WiFi()
-date_time = Time(-7)
+date_time = Time(-7) # ENTER YOUR TIMEZONE. 
 temperature_sensor = TemperatureSensor(15)
 motor = StepperMotor()
 udp = Udp(UDP_PORT)
 
-wifi.connect("itkacher", "itkacher")
+wifi.connect("WI-Fi-SSID", "WI-FI-PASSWORD") # ENTER YOUR WI-FI CREDENTIALS
 date_time.sync()
 is_opened = True
 motor.rotate(direction=-1)

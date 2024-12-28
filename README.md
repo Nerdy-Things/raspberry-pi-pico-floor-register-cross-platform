@@ -1,5 +1,7 @@
 # Raspberry PI Pico 3D Printed Smart Floor Register
 
+[![Watch the video](/images/rpi-pico-register-blue-youtube.jpg)](https://youtu.be/JJ_Q_NG861g)
+
 To download run:
 ```bash
 git clone https://github.com/Nerdy-Things/raspberry-pi-pico-floor-register-cross-platform.git
